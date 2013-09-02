@@ -10,9 +10,13 @@ logger = getLogger()
 
 class RootPermissions(object):
     def _nt(self):
-        from ctypes import windll
-        # http://msdn.microsoft.com/en-us/library/windows/desktop/bb776463(v=vs.85).aspx
-        return windll.shell32.IsUserAnAdmin()
+        from infi.winver import Windows
+        if Windows().greater_than("Windows 2003"):
+            from .groups import is_admin
+            return is_admin()
+        else:
+            from ctypes import windll
+            return windll.shell32.IsUserAnAdmin()
 
     def _posix(self):
         return os.getuid() == 0
