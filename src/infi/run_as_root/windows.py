@@ -3,8 +3,10 @@
 # enumerate the groups of the process token, find the Administrator group, and make sure its
 # SE_GROUP_USE_FOR_DENY_ONLY bit is off. This is always true for "Administrator" account, and for other
 # users it's true only if the process is run with "Run as Administrator" and/or UAC was passed
+# This function can be used even on older Windows versions where UAC is not available - the bit
+# will never be set, and we only check that the token has the Administrators group
 
-from ctypes import byref, c_ubyte, c_ulong, c_void_p, cast, POINTER, Structure, windll
+from ctypes import byref, c_ulong, c_void_p, cast, POINTER, Structure, windll
 from infi.pyutils.contexts import contextmanager
 
 OpenProcessToken = windll.advapi32.OpenProcessToken
@@ -73,5 +75,6 @@ def is_admin():
         for sid, attributes in get_token_groups():
             if EqualSid(sid, admin_sid):
                 return not bool(attributes & SE_GROUP_USE_FOR_DENY_ONLY)
-        else:
-            return False
+    # admin SID not found in token groups
+    return False
+
