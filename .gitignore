@@ -40,3 +40,4 @@ bootstrap.py
 
 src/infi/run_as_root/__version__.py
 .cache
+eggs
