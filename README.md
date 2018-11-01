@@ -28,3 +28,5 @@ Run the following:
 
     easy_install -U infi.projector
     projector devenv build
+
+Python 3 support is experimental and not fully tested.
