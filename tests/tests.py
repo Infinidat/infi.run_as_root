@@ -1,4 +1,4 @@
-from . import RootPermissions, exit_if_not_root, BYPASS_KEY
+from src.infi.run_as_root import RootPermissions, exit_if_not_root, BYPASS_KEY
 from infi import unittest
 from mock import patch
 import os

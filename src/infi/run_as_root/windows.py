@@ -6,18 +6,46 @@
 # This function can be used even on older Windows versions where UAC is not available - the bit
 # will never be set, and we only check that the token has the Administrators group
 
-from ctypes import byref, c_ulong, c_void_p, cast, POINTER, Structure, windll
+from ctypes import byref, cast, POINTER, Structure, windll, wintypes
 from infi.pyutils.contexts import contextmanager
 
+SID = wintypes.LPVOID
+
 OpenProcessToken = windll.advapi32.OpenProcessToken
+OpenProcessToken.argtypes = (wintypes.HANDLE, wintypes.DWORD, wintypes.PHANDLE)
+OpenProcessToken.restype = wintypes.BOOL
+
 GetCurrentProcess = windll.kernel32.GetCurrentProcess
+GetCurrentProcess.restype = wintypes.HANDLE
+
 EqualSid = windll.advapi32.EqualSid
+EqualSid.argtypes = (POINTER(SID), POINTER(SID))
+EqualSid.restype = wintypes.BOOL
+
 CreateWellKnownSid = windll.advapi32.CreateWellKnownSid
+CreateWellKnownSid.argtypes = (wintypes.UINT, POINTER(SID), POINTER(SID), POINTER(wintypes.DWORD))
+CreateWellKnownSid.restype = wintypes.BOOL
+
 LocalAlloc = windll.kernel32.LocalAlloc
+LocalAlloc.argtypes = (wintypes.UINT, wintypes.UINT)
+LocalAlloc.restype = wintypes.HLOCAL
+
 LocalFree = windll.kernel32.LocalFree
+LocalFree.argtypes = (wintypes.HLOCAL, )
+LocalFree.restype = wintypes.HLOCAL
+
 CloseHandle = windll.kernel32.CloseHandle
+CloseHandle.argtypes = (wintypes.HANDLE, )
+CloseHandle.restype = wintypes.BOOL
+
 GetLastError = windll.kernel32.GetLastError
+GetLastError.restype = wintypes.DWORD
+
 GetTokenInformation = windll.advapi32.GetTokenInformation
+GetTokenInformation.argtypes = (wintypes.HANDLE, wintypes.UINT, wintypes.LPVOID, wintypes.DWORD, wintypes.PDWORD)
+GetTokenInformation.restype = wintypes.BOOL
+
+
 TOKEN_QUERY = 0x0008
 TokenGroups = 2
 WinBuiltinAdministratorsSid = 26
@@ -25,19 +53,22 @@ ERROR_INSUFFICIENT_BUFFER = 122
 SECURITY_MAX_SID_SIZE = 68
 SE_GROUP_USE_FOR_DENY_ONLY = 0x00000010
 
+
 class SID_AND_ATTRIBUTES(Structure):
-    _fields_ = [('Sid', POINTER(c_void_p)), ('Attributes', c_ulong)]
+    _fields_ = [('Sid', POINTER(SID)), ('Attributes', wintypes.DWORD)]
+
 
 def token_groups(count):
     class TOKEN_GROUPS(Structure):
-        _fields_ = [('GroupCount', c_ulong), ('Groups', SID_AND_ATTRIBUTES * count)]
+        _fields_ = [('GroupCount', wintypes.DWORD), ('Groups', SID_AND_ATTRIBUTES * count)]
     return TOKEN_GROUPS
 
-def get_token_groups():
-    hToken = c_void_p()
-    dwLengthNeeded = c_ulong()
 
-    hProcess = c_void_p(GetCurrentProcess())
+def get_token_groups():
+    hToken = wintypes.HANDLE()
+    dwLengthNeeded = wintypes.UINT()
+
+    hProcess = GetCurrentProcess()
     bResult = OpenProcessToken(hProcess, TOKEN_QUERY, byref(hToken))
     assert bResult
     try:
@@ -47,7 +78,7 @@ def get_token_groups():
         assert pGroups
         try:
             bResult = GetTokenInformation(hToken, TokenGroups, pGroups, dwLengthNeeded, byref(dwLengthNeeded))
-            groups_count = cast(pGroups, POINTER(c_ulong))[0]
+            groups_count = cast(pGroups, POINTER(wintypes.ULONG))[0]
             groups = cast(pGroups, POINTER(token_groups(groups_count)))[0]
             for i in range(groups.GroupCount):
                 group = groups.Groups[i]
@@ -57,18 +88,20 @@ def get_token_groups():
     finally:
         CloseHandle(hToken)
 
+
 @contextmanager
 def get_builtin_administrators_sid():
-    cbSidSize = c_ulong(SECURITY_MAX_SID_SIZE)
+    cbSidSize = wintypes.DWORD(SECURITY_MAX_SID_SIZE)
     pSid = LocalAlloc(0, SECURITY_MAX_SID_SIZE)
     assert pSid
-    Sid = cast(pSid, POINTER(c_void_p))
+    Sid = cast(pSid, POINTER(SID))
     try:
         bResult = CreateWellKnownSid(WinBuiltinAdministratorsSid, None, Sid, byref(cbSidSize))
         assert bResult
         yield Sid
     finally:
         LocalFree(pSid)
+
 
 def is_admin():
     with get_builtin_administrators_sid() as admin_sid:
@@ -77,4 +110,3 @@ def is_admin():
                 return not bool(attributes & SE_GROUP_USE_FOR_DENY_ONLY)
     # admin SID not found in token groups
     return False
-
