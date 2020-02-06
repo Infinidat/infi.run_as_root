@@ -10,16 +10,6 @@ from ctypes import byref, cast, POINTER, Structure, windll, wintypes
 from infi.pyutils.contexts import contextmanager
 
 
-class SID_IDENTIFIER_AUTHORITY(Structure):
-    _fields_ = [("byte0", wintypes.BYTE), ("byte1", wintypes.BYTE), ("byte2", wintypes.BYTE),
-                ("byte3", wintypes.BYTE), ("byte4", wintypes.BYTE), ("byte5", wintypes.BYTE)]
-
-
-class SID(Structure):
-    _fields_ = [("Revision", wintypes.BYTE), ("SubAuthorityCount", wintypes.BYTE),
-                ("IdentifierAuthority", SID_IDENTIFIER_AUTHORITY), ("SubAuthority", POINTER(wintypes.DWORD))]
-
-
 OpenProcessToken = windll.advapi32.OpenProcessToken
 OpenProcessToken.argtypes = (wintypes.HANDLE, wintypes.DWORD, wintypes.PHANDLE)
 OpenProcessToken.restype = wintypes.BOOL
@@ -28,11 +18,11 @@ GetCurrentProcess = windll.kernel32.GetCurrentProcess
 GetCurrentProcess.restype = wintypes.HANDLE
 
 EqualSid = windll.advapi32.EqualSid
-EqualSid.argtypes = (POINTER(SID), POINTER(SID))
+EqualSid.argtypes = (wintypes.LPVOID, wintypes.LPVOID)
 EqualSid.restype = wintypes.BOOL
 
 CreateWellKnownSid = windll.advapi32.CreateWellKnownSid
-CreateWellKnownSid.argtypes = (wintypes.UINT, POINTER(SID), POINTER(SID), POINTER(wintypes.DWORD))
+CreateWellKnownSid.argtypes = (wintypes.UINT, wintypes.LPVOID, wintypes.LPVOID, POINTER(wintypes.DWORD))
 CreateWellKnownSid.restype = wintypes.BOOL
 
 LocalAlloc = windll.kernel32.LocalAlloc
@@ -64,7 +54,7 @@ SE_GROUP_USE_FOR_DENY_ONLY = 0x00000010
 
 
 class SID_AND_ATTRIBUTES(Structure):
-    _fields_ = [('Sid', POINTER(SID)), ('Attributes', wintypes.DWORD)]
+    _fields_ = [('Sid', wintypes.LPVOID), ('Attributes', wintypes.DWORD)]
 
 
 def token_groups(count):
@@ -103,7 +93,7 @@ def get_builtin_administrators_sid():
     cbSidSize = wintypes.DWORD(SECURITY_MAX_SID_SIZE)
     pSid = LocalAlloc(0, SECURITY_MAX_SID_SIZE)
     assert pSid
-    Sid = cast(pSid, POINTER(SID))
+    Sid = cast(pSid, wintypes.LPVOID)
     try:
         bResult = CreateWellKnownSid(WinBuiltinAdministratorsSid, None, Sid, byref(cbSidSize))
         assert bResult
