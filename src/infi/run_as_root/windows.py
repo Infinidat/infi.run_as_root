@@ -12,7 +12,7 @@ from infi.pyutils.contexts import contextmanager
 SID = wintypes.LPVOID
 
 OpenProcessToken = windll.advapi32.OpenProcessToken
-OpenProcessToken.argtypes = (wintypes.HANDLE, wintypes.DWORD, wintypes.PHANDLE)
+OpenProcessToken.argtypes = (wintypes.HANDLE, wintypes.DWORD, POINTER(wintypes.HANDLE))
 OpenProcessToken.restype = wintypes.BOOL
 
 GetCurrentProcess = windll.kernel32.GetCurrentProcess
@@ -42,7 +42,7 @@ GetLastError = windll.kernel32.GetLastError
 GetLastError.restype = wintypes.DWORD
 
 GetTokenInformation = windll.advapi32.GetTokenInformation
-GetTokenInformation.argtypes = (wintypes.HANDLE, wintypes.UINT, wintypes.LPVOID, wintypes.DWORD, wintypes.PDWORD)
+GetTokenInformation.argtypes = (wintypes.HANDLE, wintypes.UINT, wintypes.LPVOID, wintypes.DWORD, POINTER(wintypes.DWORD))
 GetTokenInformation.restype = wintypes.BOOL
 
 
